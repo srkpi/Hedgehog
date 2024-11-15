@@ -1,0 +1,5 @@
+python-telegram-bot==20.5  # Match the latest compatible version
+python-dotenv             # For environment variable management
+pymongo                   # MongoDB client for Python
+requests                  # For making HTTP requests
+swagger-ui-bundle         # Swagger-related utilities
