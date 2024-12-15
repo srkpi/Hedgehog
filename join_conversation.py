@@ -1,4 +1,4 @@
-import re  # For parsing input text
+import re
 import telegram
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler, ConversationHandler
@@ -64,8 +64,7 @@ async def join(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     else:
         context.user_data['username'] = (f"@{username}").replace("_","\_")
         await update.message.reply_text(f"{context.user_data.get('index')}. ПІБ(повністю без скорочень):")
-        #return FULL_NAME
-        return MOTIVATION
+        return FULL_NAME
 
 
 async def username(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

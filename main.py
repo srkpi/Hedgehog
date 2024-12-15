@@ -1,4 +1,4 @@
-import re  # For parsing input text
+import re
 import telegram
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler, ConversationHandler
@@ -17,13 +17,15 @@ import event_conversation
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
 
-load_dotenv(dotenv_path=".env")
+if os.path.isfile('.env'):
+    load_dotenv(dotenv_path='.env') # зчитування з файлу .env
 dev_chat_id = str(os.getenv("DEV_CHAT"))
 admin_id = str(os.getenv("ADMIN_ID"))
 telegram_token = str(os.getenv("BOT_TOKEN"))
 swagger_url = str(os.getenv("SWAGGER_URL"))
 swagger_key = str(os.getenv("SWAGGER_KEY"))
 mongo_url = str(os.getenv("MONGO_KEY"))
+
 
 ordinary_commands=[("start", "Запускає бота"),("help", "Коротка довідка"),("chatid", "Показує ID цього чату"),("join", "Заповнення форми для приєднання"),("addevent", "Додавання нової події")]
 form_commands=[("cancel","Скасувати заповнення форми"),("start", "Запускає бота"),("help", "Коротка довідка"),("chatid", "Показує ID цього чату"),("join", "Заповнення форми для приєднання"),("addevent", "Додавання нової події")]
@@ -146,6 +148,7 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def post_init(context: ContextTypes.DEFAULT_TYPE) -> None:
+    print("Started")
     await context.bot.set_my_commands(ordinary_commands)
     await context.bot.set_my_commands(
         [("start", "Запускає бота"), ("help", "Коротка довідка"), ("chatid", "Показує ID цього чату")],
@@ -153,38 +156,40 @@ async def post_init(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    print(context.error)
+    print(str(context.error))
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open("log.txt", "a+") as file:
         file.write(f"{str(context.error)}\n{current_time}\n")
 
 
 def main():
+    print("Launched.")
     reboot = True
     SWG.initialize(swagger_url,swagger_key)
     MNG.initialize(mongo_url,"HedgeHog_bot_DB")
     MNG.load_all_to_array(event_users,"Event_users")
+    app = ApplicationBuilder().token(telegram_token).post_init(post_init).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help))
+    app.add_handler(CommandHandler("chatid", chat_id))
+    app.add_handler(CommandHandler("adduser", add_event_user))
+    app.add_handler(CommandHandler("removeuser", remove_event_user))
+    app.add_handler(CommandHandler("listusers", view_event_users))
+    app.add_handler(join_conversation.init(dev_chat_id, forms, ordinary_commands, form_commands))
+    app.add_handler(event_conversation.init(dev_chat_id, event_users, ordinary_commands, form_commands))
+    app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
+    app.add_handler(CallbackQueryHandler(buttons))  # додавання обробника кнопок
+    app.add_error_handler(error_handler)
     while reboot:
         try:
-            app = ApplicationBuilder().token(telegram_token).post_init(post_init).read_timeout(
-                read_timeout=60).connect_timeout(connect_timeout=60).build()
-            app.add_handler(CommandHandler("start", start))
-            app.add_handler(CommandHandler("help", help))
-            app.add_handler(CommandHandler("chatid", chat_id))
-            app.add_handler(CommandHandler("adduser", add_event_user))
-            app.add_handler(CommandHandler("removeuser", remove_event_user))
-            app.add_handler(CommandHandler("listusers", view_event_users))
-            app.add_handler(join_conversation.init(dev_chat_id, forms, ordinary_commands, form_commands))
-            app.add_handler(event_conversation.init(dev_chat_id, event_users, ordinary_commands, form_commands))
-            app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
-            app.add_handler(CallbackQueryHandler(buttons))  # додавання обробника кнопок
-            app.add_error_handler(error_handler)
-            app.run_polling(poll_interval=0.5)
+            print("Starting app...")
+            app.run_polling(allowed_updates=Update.ALL_TYPES, timeout=50, close_loop=True, poll_interval=0.5)
         except NetworkError as e:
+            print(str(e))
             with open("log.txt", "a+") as file:
                 current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 file.write(f"{str(e)}\n{current_time}\n")
-            time.sleep(30)
+            time.sleep(10)
 
 
 if __name__ == "__main__":
